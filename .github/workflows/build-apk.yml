@@ -1,0 +1,55 @@
+
+name: Build Spendwise APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '*.zip'
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Extract project
+        run: |
+          unzip -q Spendwise_Flutter_Project*.zip -d extracted
+          ls -R extracted
+
+      - name: Create Android project
+        run: |
+          flutter create --platforms=android --project-name spendwise --org com.example spendwise_app
+          cp -r extracted/spendwise_flutter/lib spendwise_app/
+          cp extracted/spendwise_flutter/pubspec.yaml spendwise_app/
+          cp extracted/spendwise_flutter/analysis_options.yaml spendwise_app/
+          if [ -d extracted/spendwise_flutter/assets ]; then
+            cp -r extracted/spendwise_flutter/assets spendwise_app/
+          fi
+
+      - name: Build release APK
+        working-directory: spendwise_app
+        run: |
+          flutter pub get
+          flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Spendwise-APK
+          path: spendwise_app/build/app/outputs/flutter-apk/app-release.apk
